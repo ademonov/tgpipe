@@ -61,10 +61,11 @@ fn main() {
     std::thread::sleep(Duration::from_secs(5));
 
     let method = SendMessage::new(-1001369415711, "Hello");
-    let f = api.execute(&method);
+    let mut f = api.execute(&method);
 
-    let mut reactor = Core::new().unwrap();
-    reactor.run(f).unwrap();
+
+    tokio::run(f.then(|_|Ok(())));
+    //let r = f.wait();
 
     //log::info!("sendMessage result: {:?}\n", r);
     std::thread::sleep(Duration::from_secs(5));
