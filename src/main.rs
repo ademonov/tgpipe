@@ -5,6 +5,7 @@ use futures::Future;
 use log;
 use std::env;
 use std::time::Duration;
+use mysql;
 
 fn handle_message(context: &mut Context, message: &Message) -> HandlerFuture {
     log::info!("got a message: {:?}\n", message);
@@ -19,22 +20,6 @@ fn handle_message(context: &mut Context, message: &Message) -> HandlerFuture {
     }
     HandlerResult::Continue.into()
 }
-
-//fn create_thread(api: Api) {
-//    std::thread::spawn(move || {
-//        let method = SendMessage::new(-1001369415711, "Hello");
-//        let response = api.execute(&method).then(|x| {
-//            log::info!("sendMessage result: {:?}\n", x);
-//            futures::future::ok::<u32, u32>(7)
-//        });
-//    });
-//}
-
-//
-//fn create_future() -> impl Future<Item = (), Error = ()> {
-//    log::info!("11");
-//    futures::future::ok(())
-//}
 
 fn create_thread(api: Api) {
     std::thread::spawn(move || {
@@ -52,6 +37,12 @@ fn main() {
     env_logger::init();
     log::info!("started");
 
+    let connection_string = env::var("MYSQL").expect("MYSQL connection string is not set");
+    let pool = match mysql::Pool ::new(connection_string) {
+        Ok(x) => x,
+        Err(e) => panic!(format!("MySQL connection failed: {}", e)),
+    };
+
     let token = env::var("CARAPAX_TOKEN").expect("CARAPAX_TOKEN is not set");
     let proxy = env::var("CARAPAX_PROXY").ok();
 
@@ -61,13 +52,14 @@ fn main() {
     std::thread::sleep(Duration::from_secs(5));
 
     let method = SendMessage::new(-1001369415711, "Hello");
-    let mut f = api.execute(&method);
+    let f = api.execute(&method);
 
 
-    tokio::run(f.then(|_|Ok(())));
-    //let r = f.wait();
+    tokio::run(f.then(|x| {
+        log::info!("sendMessage result: {:?}\n", x);
+        Ok(())
+    }));
 
-    //log::info!("sendMessage result: {:?}\n", r);
     std::thread::sleep(Duration::from_secs(5));
 }
 
