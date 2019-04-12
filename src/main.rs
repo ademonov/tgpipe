@@ -13,7 +13,7 @@ fn handle_message(context: &mut Context, message: &Message) -> HandlerFuture {
         let chat_id = message.get_chat_id();
         let method = SendMessage::new(chat_id, text.data.clone());
         let api = context.get::<Api>();
-        return HandlerFuture::new(api.execute(&method).then(|x| {
+        return HandlerFuture::new(api.execute(method).then(|x| {
             log::info!("sendMessage result: {:?}\n", x);
             Ok(HandlerResult::Continue)
         }));
@@ -46,13 +46,18 @@ fn main() {
     let token = env::var("CARAPAX_TOKEN").expect("CARAPAX_TOKEN is not set");
     let proxy = env::var("CARAPAX_PROXY").ok();
 
-    let api = Api::new(token, proxy).unwrap();
+    let mut config = Config::new(token);
+    if let Some(proxy) = proxy {
+        config = config.proxy(proxy);
+    }
+
+    let api = Api::new(config).unwrap();
     create_thread(api.clone());
 
     std::thread::sleep(Duration::from_secs(5));
 
     let method = SendMessage::new(-1001369415711, "Hello");
-    let f = api.execute(&method);
+    let f = api.execute(method);
 
 
     tokio::run(f.then(|x| {
